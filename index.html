@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Управление клиентами</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #121212; margin: 0; padding: 20px; color: #eee; }
+    .container { background: #1e1e1e; padding: 20px; border-radius: 10px; max-width: 1000px; margin: auto; }
+    h2 { margin-top: 0; text-align: center; color: #fff; }
+    button { padding: 10px 20px; margin-top: 10px; font-size: 16px; border: none; border-radius: 5px; background: #007bff; color: white; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    .list { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .item { background: #2c2c2c; padding: 10px; border-radius: 5px; flex: 1 1 30%; display: flex; justify-content: space-between; align-items: center; }
+    .hidden { display: none; }
+    .price { font-weight: bold; font-size: 18px; margin-top: 10px; }
+    input[type=number], input[type=text] { width: 100%; padding: 8px; margin-top: 5px; background: #333; color: #fff; border: none; border-radius: 5px; }
+    label { font-size: 14px; margin-top: 10px; display: block; }
+    #suggestions { background: #2c2c2c; margin-top: 5px; border-radius: 5px; overflow: hidden; }
+    .suggestion-item { padding: 8px; cursor: pointer; }
+    .suggestion-item:hover { background: #3c3c3c; }
+    #selectedPrice { margin-top: 5px; font-size: 16px; color: #00ff88; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h2>Клиенты</h2>
+  <button onclick="addClient()">Добавить клиента</button>
+  <div class="list" id="clientList"></div>
+
+  <div id="productSection" class="hidden">
+    <h2>Добавить товары клиенту</h2>
+    <label for="searchInput">Введите название товара:</label>
+    <input type="text" id="searchInput" oninput="filterProducts()" placeholder="Поиск товара...">
+    <div id="suggestions"></div>
+
+    <div id="selectedPrice"></div>
+
+    <label for="quantityInput">Количество:</label>
+    <input type="number" id="quantityInput" min="1" value="1">
+
+    <button onclick="addProductToClient()">Добавить товар</button>
+    <div class="list" id="productList"></div>
+    <button onclick="sendToCash()">Отправить в кассу</button>
+  </div>
+
+  <div id="cashSection" class="hidden">
+    <h2>Касса</h2>
+    <div id="cashList"></div>
+    <div class="price" id="totalPrice">Итого: 0 сум</div>
+    <button onclick="closeSale()">Закрыть продажу</button>
+  </div>
+</div>
+
+<script>
+const availableProducts = [
+  { name: 'Рулон обои', price: 199000 },
+  { name: 'Карска', price: 56000 },
+  { name: 'Ламинат', price: 78000 }
+];
+
+let selectedProduct = null;
+let clients = [];
+let selectedClient = null;
+let products = [];
+
+function addClient() {
+  const name = prompt('Введите имя клиента:');
+  if (name) {
+    clients.push({ name });
+    renderClients();
+  }
+}
+
+function renderClients() {
+  const clientList = document.getElementById('clientList');
+  clientList.innerHTML = '';
+  clients.forEach((client, index) => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `<span>${client.name}</span> <button onclick="selectClient(${index})">Выбрать</button>`;
+    clientList.appendChild(div);
+  });
+}
+
+function selectClient(index) {
+  selectedClient = clients[index];
+  document.getElementById('productSection').classList.remove('hidden');
+}
+
+function filterProducts() {
+  const query = document.getElementById('searchInput').value.toLowerCase();
+  const suggestions = document.getElementById('suggestions');
+  suggestions.innerHTML = '';
+
+  if (query.length === 0) {
+    selectedProduct = null;
+    document.getElementById('selectedPrice').innerText = '';
+    return;
+  }
+
+  availableProducts.filter(p => p.name.toLowerCase().includes(query)).forEach(prod => {
+    const div = document.createElement('div');
+    div.className = 'suggestion-item';
+    div.innerText = `${prod.name} — ${prod.price.toLocaleString()} сум`;
+    div.onclick = () => selectProduct(prod);
+    suggestions.appendChild(div);
+  });
+}
+
+function selectProduct(product) {
+  selectedProduct = product;
+  document.getElementById('searchInput').value = product.name;
+  document.getElementById('suggestions').innerHTML = '';
+  document.getElementById('selectedPrice').innerText = `Цена за единицу: ${product.price.toLocaleString()} сум`;
+}
+
+function addProductToClient() {
+  const quantity = parseInt(document.getElementById('quantityInput').value);
+  if (selectedProduct && quantity > 0) {
+    products.push({ name: selectedProduct.name, price: selectedProduct.price, quantity });
+    renderProducts();
+    resetProductForm();
+  } else {
+    alert('Пожалуйста, выберите товар и укажите количество.');
+  }
+}
+
+function resetProductForm() {
+  selectedProduct = null;
+  document.getElementById('searchInput').value = '';
+  document.getElementById('suggestions').innerHTML = '';
+  document.getElementById('selectedPrice').innerText = '';
+  document.getElementById('quantityInput').value = 1;
+}
+
+function renderProducts() {
+  const productList = document.getElementById('productList');
+  productList.innerHTML = '';
+  products.forEach((product) => {
+    const div = document.createElement('div');
+    div.className = 'item';
+    div.innerHTML = `<span>${product.name} × ${product.quantity}</span><span>${(product.price * product.quantity).toLocaleString()} сум</span>`;
+    productList.appendChild(div);
+  });
+}
+
+function sendToCash() {
+  document.getElementById('cashSection').classList.remove('hidden');
+  const cashList = document.getElementById('cashList');
+  cashList.innerHTML = `<div class='item'><span>${selectedClient.name}</span><span>${getTotalPrice().toLocaleString()} сум</span></div>`;
+  document.getElementById('totalPrice').innerText = `Итого: ${getTotalPrice().toLocaleString()} сум`;
+}
+
+function getTotalPrice() {
+  return products.reduce((sum, p) => sum + (p.price * p.quantity), 0);
+}
+
+function closeSale() {
+  alert(`Продажа для клиента "${selectedClient.name}" закрыта на сумму ${getTotalPrice().toLocaleString()} сум!`);
+  selectedClient = null;
+  products = [];
+  document.getElementById('productSection').classList.add('hidden');
+  document.getElementById('cashSection').classList.add('hidden');
+  document.getElementById('productList').innerHTML = '';
+  document.getElementById('cashList').innerHTML = '';
+  document.getElementById('totalPrice').innerText = 'Итого: 0 сум';
+  resetProductForm();
+}
+</script>
+
+</body>
+</html>
